@@ -1,25 +1,43 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
 
-# Load trained model and scaler
-model = joblib.load("model.pkl")
-scaler = joblib.load("scaler.pkl")
-
+# ---------------------------------------------------------
 # Page configuration
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="Diabetes Prediction",
     page_icon="🩺"
 )
 
+# ---------------------------------------------------------
+# Load trained model and scaler
+# ---------------------------------------------------------
+@st.cache_resource
+def load_artifacts():
+    model = joblib.load("model.pkl")
+    scaler = joblib.load("scaler.pkl")
+    return model, scaler
+
+try:
+    model, scaler = load_artifacts()
+except FileNotFoundError as e:
+    st.error(
+        f"Could not find required file: {e.filename}. "
+        "Make sure 'model.pkl' and 'scaler.pkl' are in the same folder as this script."
+    )
+    st.stop()
+
+# ---------------------------------------------------------
+# Title
+# ---------------------------------------------------------
 st.title("🩺 Diabetes Prediction")
 st.write("Logistic Regression based Diabetes Prediction")
-
 st.write("Enter the patient's information below.")
 
+# ---------------------------------------------------------
 # Input fields
-
+# ---------------------------------------------------------
 pregnancies = st.number_input(
     "Pregnancies",
     min_value=0,
@@ -76,9 +94,13 @@ age = st.number_input(
     value=30
 )
 
+# ---------------------------------------------------------
 # Prediction
+# ---------------------------------------------------------
 if st.button("Predict Diabetes"):
-
+    # Create dataframe from user input
+    # NOTE: column order/names must match exactly what the scaler/model
+    # were fitted on.
     input_data = pd.DataFrame({
         "Pregnancies": [pregnancies],
         "Glucose": [glucose],
@@ -96,9 +118,10 @@ if st.button("Predict Diabetes"):
     # Prediction
     prediction = model.predict(input_scaled)
 
-    # Probability
+    # Probability of class "1" (diabetic)
     probability = model.predict_proba(input_scaled)[0][1]
 
+    # Display Result
     st.subheader("Prediction Result")
 
     if prediction[0] == 1:
@@ -106,6 +129,4 @@ if st.button("Predict Diabetes"):
     else:
         st.success("Lower likelihood of diabetes")
 
-    st.write(
-        f"Diabetes Probability: {probability * 100:.2f}%"
-    )
+    st.write(f"Diabetes Probability: {probability * 100:.2f}%")
